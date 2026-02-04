@@ -28,7 +28,7 @@ function getHeaders() {
 
 export async function POST(request: Request) {
   try {
-    const { url, lighthouseData } = await request.json();
+    const { url, lighthouseData, strategy = 'mobile' } = await request.json();
     if (!url) return NextResponse.json({ error: 'URL is required' }, { status: 400 });
 
     // Parallel Execution for Speed
@@ -533,11 +533,58 @@ function generateMechanicalSuggestions(data: any) {
     if (!data.title) issues.push({ category: 'SEO', priority: 'Critical', title: 'Missing Title Tag', desc: 'The page lacks a title tag.', fix: 'Add <title> tag to head.' });
     else if (data.title.length < 30) issues.push({ category: 'SEO', priority: 'Medium', title: 'Short Title', desc: 'Title is too short.', fix: 'Make title 50-60 characters.' });
     
-    if (!data.description) issues.push({ category: 'SEO', priority: 'High', title: 'Missing Meta Description', desc: 'No description found.', fix: 'Add <meta name="description">.' });
+    if (!data.h1) issues.push({ category: 'SEO', priority: 'High', title: 'Missing H1 Tag', desc: 'No H1 heading found.', fix: 'Add exactly one H1 tag describing the page.' });
+    else if (data.headings && data.headings.filter((h:any) => h.tag === 'H1').length > 1) {
+        issues.push({ category: 'SEO', priority: 'Medium', title: 'Multiple H1 Tags', desc: 'More than one H1 tag found.', fix: 'Ensure only one H1 per page for clear structure.' });
+    }
+
+    // Heading Hierarchy Check
+    if (data.headings && data.headings.length > 0) {
+        let lastLevel = 1; // Assuming start with H1
+        const hierarchyIssues = [];
+        for (const h of data.headings) {
+            const level = parseInt(h.tag.replace('H', ''));
+            if (level > lastLevel + 1) {
+                hierarchyIssues.push(`${h.tag} follows H${lastLevel}`);
+            }
+            lastLevel = level;
+        }
+        if (hierarchyIssues.length > 0) {
+             issues.push({ 
+                category: 'SEO', 
+                priority: 'Low', 
+                title: 'Skipped Heading Levels', 
+                desc: `Headings should not skip levels (e.g., H1 -> H3). Issues: ${hierarchyIssues.slice(0, 3).join(', ')}...`, 
+                fix: 'Maintain sequential order (H1 -> H2 -> H3).' 
+            });
+        }
+    }
+
+    // Canonical Check
+    if (data.metaTags && !data.metaTags.canonical) {
+         issues.push({ category: 'SEO', priority: 'Medium', title: 'Missing Canonical Tag', desc: 'Canonical tag helps prevent duplicate content issues.', fix: 'Add <link rel="canonical" href="...">.' });
+    } else if (data.metaTags && data.metaTags.canonical && data.metaTags.canonical !== data.url) {
+        // Just a warning, sometimes intentional
+        issues.push({ category: 'SEO', priority: 'Low', title: 'Canonical Mismatch', desc: 'Canonical URL differs from current URL.', fix: 'Verify if this is intentional for duplicate content handling.' });
+    }
 
     // 2. Content & Images (From Local Scan)
     if (data.content?.wordCount < 300) {
         issues.push({ category: 'Content', priority: 'High', title: 'Thin Content', desc: `Only ${data.content.wordCount} words found.`, fix: 'Add more text content (aim for 600+ words).' });
+    }
+
+    // Keyword Stuffing Check
+    if (data.keywords) {
+        const stuffedKeywords = data.keywords.filter((k: any) => parseFloat(k.density) > 5.0);
+        if (stuffedKeywords.length > 0) {
+            issues.push({
+                category: 'Content',
+                priority: 'High',
+                title: 'Keyword Stuffing Detected',
+                desc: `Keywords with >5% density: ${stuffedKeywords.map((k:any) => k.word).join(', ')}`,
+                fix: 'Reduce keyword repetition to avoid penalty (keep under 3-4%).'
+            });
+        }
     }
 
     if (data.images?.length > 0) {

@@ -56,7 +56,7 @@ export default function LinkVisualizer({ links, sitemapData, domain }: LinkVisua
     nodes.push({ 
         id: rootId, 
         name: domain, 
-        val: 20, 
+        val: 10, 
         color: '#6366f1', // Indigo
         group: 'page'
     });
@@ -72,7 +72,7 @@ export default function LinkVisualizer({ links, sitemapData, domain }: LinkVisua
         nodes.push({
             id,
             name: sitemapData?.urls?.[i] ? new URL(sitemapData.urls[i]).pathname : `/page-${i+1}`,
-            val: 10,
+            val: 5,
             color: '#34d399', // Emerald
             group: 'page'
         });
@@ -90,7 +90,7 @@ export default function LinkVisualizer({ links, sitemapData, domain }: LinkVisua
         nodes.push({
             id,
             name: `External Site ${i+1}`,
-            val: 5,
+            val: 3,
             color: '#ec4899', // Pink
             group: 'external'
         });
@@ -153,11 +153,14 @@ export default function LinkVisualizer({ links, sitemapData, domain }: LinkVisua
                 graphData={data}
                 nodeLabel="name"
                 nodeColor="color"
-                nodeRelSize={6}
+                nodeRelSize={4}
                 linkColor={() => '#ffffff20'}
                 backgroundColor="rgba(0,0,0,0)"
                 enableNodeDrag={true}
                 cooldownTicks={100}
+                d3VelocityDecay={0.3}
+                linkDirectionalParticles={2}
+                linkDirectionalParticleSpeed={0.005}
                 onNodeClick={(node) => {
                     // Zoom to node functionality could go here
                 }}

@@ -30,6 +30,7 @@ export default function ProjectDetail({ params }: { params: Promise<{ domain: st
   const [targetKeyword, setTargetKeyword] = useState('');
   const [keywordAnalysis, setKeywordAnalysis] = useState<any>(null);
   const [completedTasks, setCompletedTasks] = useState<string[]>([]);
+  const [scanStrategy, setScanStrategy] = useState<'mobile' | 'desktop'>('mobile');
 
   useEffect(() => {
     const saved = localStorage.getItem('seo-sites');
@@ -47,7 +48,7 @@ export default function ProjectDetail({ params }: { params: Promise<{ domain: st
     try {
       let lighthouseData = null;
       try {
-        const googleUrl = `https://www.googleapis.com/pagespeedonline/v5/runPagespeed?url=${encodeURIComponent(site.url)}&category=SEO&category=PERFORMANCE&category=ACCESSIBILITY&category=BEST_PRACTICES&strategy=mobile`;
+        const googleUrl = `https://www.googleapis.com/pagespeedonline/v5/runPagespeed?url=${encodeURIComponent(site.url)}&category=SEO&category=PERFORMANCE&category=ACCESSIBILITY&category=BEST_PRACTICES&strategy=${scanStrategy}`;
         const lhRes = await fetch(googleUrl);
         if (lhRes.ok) {
             const json = await lhRes.json();
@@ -58,7 +59,7 @@ export default function ProjectDetail({ params }: { params: Promise<{ domain: st
       const response = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: site.url, lighthouseData }),
+        body: JSON.stringify({ url: site.url, lighthouseData, strategy: scanStrategy }),
       });
 
       const data = await response.json();
@@ -231,6 +232,23 @@ export default function ProjectDetail({ params }: { params: Promise<{ domain: st
           <button onClick={() => generatePdfReport(site)} className="px-4 py-2 bg-white/5 border border-white/10 text-white rounded-lg hover:bg-white/10 transition-colors flex items-center gap-2">
             <span>🖨️</span> {t('exportPdf')}
           </button>
+          
+          {/* Strategy Toggle */}
+          <div className="flex bg-white/5 rounded-lg p-1 border border-white/10">
+            <button 
+                onClick={() => setScanStrategy('mobile')}
+                className={`px-3 py-1 text-xs rounded-md transition-all ${scanStrategy === 'mobile' ? 'bg-indigo-600 text-white shadow-lg' : 'text-zinc-400 hover:text-white'}`}
+            >
+                📱 Mobile
+            </button>
+            <button 
+                onClick={() => setScanStrategy('desktop')}
+                className={`px-3 py-1 text-xs rounded-md transition-all ${scanStrategy === 'desktop' ? 'bg-indigo-600 text-white shadow-lg' : 'text-zinc-400 hover:text-white'}`}
+            >
+                💻 Desktop
+            </button>
+          </div>
+
           <button onClick={handleRescan} disabled={isRescanning} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg shadow-lg font-medium disabled:opacity-50 flex items-center gap-2">
             {isRescanning ? <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>{t('scanning')}</> : t('runAnalysis')}
           </button>
